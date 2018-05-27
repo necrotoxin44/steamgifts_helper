@@ -4,9 +4,13 @@ from selenium.webdriver.common.by import By
 from selenium.common.exceptions import ElementNotInteractableException
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.firefox.options import Options
 
-#create instance of Firefox driver
-driver = webdriver.Firefox()
+#create instance of (headless) Firefox driver
+options = Options()
+options.set_headless(headless=True)
+driver = webdriver.Firefox(firefox_options=options)
+print("Headless Firefox initialized.")
 
 root = "https://www.steamgifts.com"
 
