@@ -8,6 +8,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.firefox.options import Options
 
 
+MAX_PAGES = 10
 root = 'https://www.steamgifts.com'
 source_dict = {
     'all':
@@ -61,6 +62,28 @@ def check_login_success(driver):
         print(element.get_attribute('href'))
         return True
 
+def crawl_giveaway_pages(driver, start, giveaways):
+    # TODO: Store next_page as element, html, or not at all and just use clicks
+    pages = 0
+    next_page = start
+    # TODO: What do the page elements look like at the end?
+    while(pages < MAX_PAGES):
+        driver.get(next_page)
+        pages += 1
+        print(driver.title)
+        gather_page_giveaways(driver, giveaways)
+        try:
+            next_page_el = driver.find_element(By.XPATH, "//span[text()='Next']/ancestor::a")
+            next_page = next_page_el.get_attribute('href')
+        except:
+            break
+
+def gather_page_giveaways(driver, giveaways):
+    pass
+
+def enter_giveaways(driver, giveaways):
+    pass
+
 def renew_cookies(driver, path):
     with open(path, 'wb') as cookies_to_bake:
         pickle.dump(driver.get_cookies(), cookies_to_bake)
@@ -77,6 +100,8 @@ with initialize_driver() as d:
     check_login_success(d)
 
     giveaways = []
+    crawl_start = source_dict['new']
+    crawl_giveaway_pages(d, crawl_start, giveaways)
     # while pages:
     #     curr_page = pages.pop()
     #     if curr_page in visited:
@@ -102,6 +127,7 @@ with initialize_driver() as d:
     #     else:
     #         pages.insert(0, next_page.get_attribute('href'))
 
+    enter_giveaways(d, giveaways)
     # # try to enter each giveaway
     # for href in href_list:
     #     d.get(href)
