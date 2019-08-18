@@ -62,24 +62,40 @@ def check_login_success(driver):
         print(element.get_attribute('href'))
         return True
 
-def crawl_giveaway_pages(driver, start, giveaways):
+def crawl_giveaway_pages(driver, start):
     # TODO: Store next_page as element, html, or not at all and just use clicks
     pages = 0
     next_page = start
     # TODO: What do the page elements look like at the end?
+    giveaways = []
     while(pages < MAX_PAGES):
         driver.get(next_page)
         pages += 1
         print(driver.title)
-        gather_page_giveaways(driver, giveaways)
+        giveaways.extend(gather_page_giveaways(driver))
         try:
-            next_page_el = driver.find_element(By.XPATH, "//span[text()='Next']/ancestor::a")
+            np_selector = "//span[text()='Next']/ancestor::a"
+            next_page_el = driver.find_element(By.XPATH, np_selector)
             next_page = next_page_el.get_attribute('href')
         except:
             break
+    return giveaways
 
-def gather_page_giveaways(driver, giveaways):
-    pass
+def gather_page_giveaways(driver):
+    r_selector = "//div[@class='pinned-giveaways__outer-wrap']/following-sibling::div[2]//a[@class='giveaway__heading__name']"
+    p_selector = "//div[@class='pinned-giveaways__outer-wrap']/following-sibling::div[2]//span[@class='giveaway__heading__thin']"
+    t_selector = ""
+
+    r_elements = driver.find_elements(By.XPATH, r_selector)
+    refs = [element.get_attribute('href') for element in r_elements]
+
+    p_elements = driver.find_elements(By.XPATH, p_selector)
+    points = [int(element.text[1:-2]) for element in p_elements]
+
+    # t_elements = driver.find_elements(By.XPATH, t_selector)
+
+    new_giveaways = zip(refs, points)
+    return new_giveaways
 
 def enter_giveaways(driver, giveaways):
     pass
@@ -99,9 +115,9 @@ with initialize_driver() as d:
 
     check_login_success(d)
 
-    giveaways = []
-    crawl_start = source_dict['new']
-    crawl_giveaway_pages(d, crawl_start, giveaways)
+    crawl_start = source_dict['wishlist']
+    giveaways = crawl_giveaway_pages(d, crawl_start)
+    print(giveaways)
     # while pages:
     #     curr_page = pages.pop()
     #     if curr_page in visited:
