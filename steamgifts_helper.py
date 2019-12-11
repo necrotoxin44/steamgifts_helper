@@ -3,8 +3,6 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import ElementNotInteractableException
 from selenium.common.exceptions import NoSuchElementException
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.firefox.options import Options
 
 
@@ -22,7 +20,7 @@ source_dict = {
     'new':
         'https://www.steamgifts.com/giveaways/search?type=new'
 }
-trail_of_cookies = 'cookies/baked_cookies.pkl'
+trail_of_cookies = 'baked_cookies.pkl'
 
 
 class Giveaway:
@@ -53,7 +51,8 @@ def check_login_success(driver):
     driver.get(root)
     # Assert login was loaded from cookies.
     try:
-        element = driver.find_element(By.XPATH, "//a[@class='nav__avatar-outer-wrap']")
+        element = driver.find_element(By.XPATH,
+            "//a[@class='nav__avatar-outer-wrap']")
     except NoSuchElementException as e:
         print('Successful login not found.')
         raise
@@ -62,11 +61,15 @@ def check_login_success(driver):
         print(element.get_attribute('href'))
         return True
 
+def get_user_points(driver):
+    driver.get(root)
+    element = driver.find_element(By.CLASS_NAME, 'nav__points')
+    points = int(element.text)
+    return points
+
 def crawl_giveaway_pages(driver, start):
-    # TODO: Store next_page as element, html, or not at all and just use clicks
     pages = 0
     next_page = start
-    # TODO: What do the page elements look like at the end?
     giveaways = []
     while(pages < MAX_PAGES):
         driver.get(next_page)
@@ -83,7 +86,7 @@ def crawl_giveaway_pages(driver, start):
 
 def gather_page_giveaways(driver):
     r_selector = "//div[@class='pinned-giveaways__outer-wrap']/following-sibling::div[2]//a[@class='giveaway__heading__name']"
-    p_selector = "//div[@class='pinned-giveaways__outer-wrap']/following-sibling::div[2]//span[@class='giveaway__heading__thin']"
+    p_selector = "//div[@class='pinned-giveaways__outer-wrap']/following-sibling::div[2]//span[@class='giveaway__heading__thin' and position()=last()]"
     t_selector = ""
 
     r_elements = driver.find_elements(By.XPATH, r_selector)
@@ -97,8 +100,24 @@ def gather_page_giveaways(driver):
     new_giveaways = zip(refs, points)
     return new_giveaways
 
-def enter_giveaways(driver, giveaways):
-    pass
+def enter_giveaways(driver, giveaways, points):
+    entered = 0
+    p = points
+    for g in giveaways:
+        if g[1] <= p:
+            if enter_giveaway(driver, g[0]):
+                p -= g[1]
+                entered += 1
+    return entered
+
+def enter_giveaway(driver, g_path):
+    driver.get(g_path)
+    try:
+        driver.find_element(By.CLASS_NAME, 'sidebar__entry-insert').click()
+    except (ElementNotInteractableException, NoSuchElementException) as e:
+        return False
+    else:
+        return True
 
 def renew_cookies(driver, path):
     with open(path, 'wb') as cookies_to_bake:
@@ -115,45 +134,13 @@ with initialize_driver() as d:
 
     check_login_success(d)
 
+    user_points = get_user_points(d)
+    print(user_points)
+
     crawl_start = source_dict['wishlist']
     giveaways = crawl_giveaway_pages(d, crawl_start)
-    print(giveaways)
-    # while pages:
-    #     curr_page = pages.pop()
-    #     if curr_page in visited:
-    #         continue
-    #     else:
-    #         visited.append(curr_page)
-    #     d.get(curr_page)
-    #     # select titles for each giveaway for use of their hyperlink
-    #     giveaway_path = ("/html/body/div[3]/div/div/div[2]/div[3]//div[@class='giveaway__row-inner-wrap']"
-    #                      "//a[@class='giveaway__heading__name']")
-    #     elements = d.find_elements(By.XPATH, giveaway_path)
-    #
-    #     total_entered = 0
-    #     # extract hyperlinks
-    #     for element in elements:
-    #         href_list.append(element.get_attribute('href'))
-    #
-    #     next_page = ''
-    #     try:
-    #         next_page = d.find_element(By.XPATH, "//div[@class='pagination__navigation']/a[3]")
-    #     except NoSuchElementException as e:
-    #         pass
-    #     else:
-    #         pages.insert(0, next_page.get_attribute('href'))
+    # print(giveaways)
 
-    enter_giveaways(d, giveaways)
-    # # try to enter each giveaway
-    # for href in href_list:
-    #     d.get(href)
-    #     try:
-    #         d.find_element(By.CLASS_NAME, "sidebar__entry-insert").click()
-    #     except (ElementNotInteractableException, NoSuchElementException) as e:
-    #         break
-    #     else:
-    #         total_entered += 1
-    #
-    # print(str(total_entered) + " entered.")
+    print(enter_giveaways(d, giveaways, user_points))
 
     renew_cookies(d, trail_of_cookies)
