@@ -5,6 +5,7 @@ from selenium.common.exceptions import ElementNotInteractableException
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.firefox.options import Options
 import boto3
+import os
 import argparse
 
 
