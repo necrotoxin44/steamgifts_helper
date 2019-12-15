@@ -4,6 +4,8 @@ from selenium.webdriver.common.by import By
 from selenium.common.exceptions import ElementNotInteractableException
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.firefox.options import Options
+import boto3
+import argparse
 
 
 MAX_PAGES = 10
@@ -21,6 +23,7 @@ source_dict = {
         'https://www.steamgifts.com/giveaways/search?type=new'
 }
 trail_of_cookies = 'baked_cookies.pkl'
+cookie_jar = 'steamgift-helper-for-d'
 
 
 class Giveaway:
@@ -31,10 +34,18 @@ class Giveaway:
         self.cost = cost
 
 
-def load_last_cookies(driver, path):
+def load_last_cookies(driver, path, heroku=False):
     # Navigate driver to steamgifts.
     driver.get(root)
 
+    if heroku:
+        # TODO: Implement Heroku
+        heroku['client'].download_file(
+            heroku['b_name'],
+            heroku['f_name'],
+            heroku['f_name']
+        )
+        print('Download Successful')
     # Add cookies for login to the driver, from a pickled object.
     with open(path, 'rb') as baked_cookies:
         for cookie in pickle.load(baked_cookies):
@@ -119,17 +130,41 @@ def enter_giveaway(driver, g_path):
     else:
         return True
 
-def renew_cookies(driver, path):
+def renew_cookies(driver, path, heroku=False):
     with open(path, 'wb') as cookies_to_bake:
         pickle.dump(driver.get_cookies(), cookies_to_bake)
     print('Cookies renewed.')
+    if heroku:
+        # TODO: Implement heroku
+        heroku['client'].upload_file(
+            heroku['f_name'],
+            heroku['b_name'],
+            heroku['f_name']
+        )
+        print('Upload Successful')
 
+
+parser = argparse.ArgumentParser(description='Helper to enter SteamGifts giveaways.')
+parser.add_argument('--heroku', dest='heroku', action='store_true')
+args = parser.parse_args()
 
 with initialize_driver() as d:
     print('Firefox driver initialized.')
 
+    S3 = {}
+    if args.heroku:
+        S3 = {
+            # 'client': S3Connection(os.environ['S3_KEY'], os.environ['S3_SECRET']),
+            'client': boto3.client('s3',
+                aws_access_key_id=os.environ['S3_KEY'],
+                aws_secret_access_key=os.environ['S3_SECRET']
+            ),
+            'f_name': trail_of_cookies,
+            'b_name': cookie_jar
+        }
+
     print('Adding cookies...')
-    load_last_cookies(d, trail_of_cookies)
+    load_last_cookies(d, trail_of_cookies, heroku=S3)
     print('Cookies added.')
 
     check_login_success(d)
@@ -143,4 +178,4 @@ with initialize_driver() as d:
 
     print(enter_giveaways(d, giveaways, user_points))
 
-    renew_cookies(d, trail_of_cookies)
+    renew_cookies(d, trail_of_cookies, heroku=S3)
